@@ -1,0 +1,494 @@
+Use the DISTINCT keyword to select all the unique values from a column.
+Use <> for "not equal to" or !=
+Use the COUNT(*) function to return the number of rows in a table.
+Call COUNT(column_name) to count the number of non-missing values in a particular column:
+	-For example, to count the number of birth dates present in the people table:
+
+	SELECT COUNT(birthdate)
+	FROM people;
+
+Combine COUNT() with DISTINCT to count the number of distinct values in a column.
+	SELECT COUNT(DISTINCT birthdate)
+	FROM people;
+
+In PostgreSQL, use single quotes with WHERE.
+
+When combining AND and OR, enclose the individual clauses in parentheses, to avoid wrong results due to SQL's precedence rules.
+
+	SELECT title
+	FROM films
+	WHERE (release_year = 1994 OR release_year = 1995)
+	AND (certification = 'PG' OR certification = 'R');
+
+BETWEEEN keyword is inclusive, i.e. the beginning and end values are included in the results.
+
+IN operator allows to specify multiple values in a WHERE clause.
+	SELECT name
+	FROM kids
+	WHERE age IN (2, 4, 6, 8, 10);
+
+NULL represents a missing or unknown value. Check for NULL values using the expression IS NULL IS NOT NULL to filter out missing values.
+
+LIKE operator can be used in a WHERE clause to search for a pattern in a column.
+	-Two wildcards can be used with the LIKE operator.
+	1. The '%' wildcard which will match zero, one, or many characters in text.
+
+		SELECT name
+		FROM companies
+		WHERE name LIKE 'Data%';
+
+		This will match companies like DataC, Datacomp, Data, Datasheet etc.
+
+	2. The '_' wildcard which will match a single character. 
+
+		SELECT name
+		FROM companies
+		WHERE name LIKE 'DataC_mp';
+
+		This will match companies like DataCamp, DataComp.
+
+NOT LIKE operator to find records that don't match the pattern specified.
+
+Aggregrate functions: SUM, AVG, MIN, MAX
+	
+
+	SELECT SUM(column_name)
+	FROM films;
+
+ALIASING - assign a temporary name to the column name of result
+
+	SELECT title, 
+			(gross - budget) AS net_profit
+	FROM films;
+
+
+ORDER BY keyword to sort results in ascending or descending order according to the values of one or more columns. Sorts in ascending order by default, use DESC to reverse the order. ORDER BY goes after GROUP BY.
+
+GROUP BY to group a result by one or more columns. GROUP BY is used after the FROM clause and commonly used with aggregrate functions like count() or max().
+
+		SELECT sex, count(*)
+		FROM employees
+		GROUP BY sex;
+
+Aggregrate functions can't be used in WHERE clauses. e.g:
+
+		SELECT release_year
+		FROM films
+		GROUP BY release_year
+		WHERE COUNT(title) > 10;
+
+Instead, use HAVING keyword
+
+		SELECT release_year
+		FROM films
+		GROUP BY release_year
+		HAVING COUNT(title) > 10;
+
+
+Example:
+
+Write a query that returns the average budget and average gross earnings for films in each year after 1990, if the average budget is greater than $60 million.
+
+		SELECT release_year, AVG(budget) AS avg_budget, AVG(gross) AS avg_gross
+		FROM films
+		WHERE release_year > 1990
+		GROUP BY release_year
+		HAVING AVG(budget) > 60000000
+		ORDER BY AVG(gross) DESC;
+
+
+Get the country, average budget, and average gross take of countries that have made more than 10 films. Order the result by country name, and limit the number of results displayed to 5. You should alias the averages as avg_budget and avg_gross respectively.
+
+		-- select country, average budget, 
+		SELECT country, AVG(budget) as avg_budget,
+		--     and average gross
+		AVG(gross) as avg_gross
+		-- from the films table
+		FROM films
+		-- group by country 
+		GROUP BY country
+		-- where the country has more than 10 titles
+		HAVING COUNT(title) > 10
+		-- order by country
+		ORDER BY country
+		-- limit to only show 5 results
+		LIMIT 5;
+
+********iINNER JOIN**********
+INNER JOIN keeps only the records IN both tables.
+
+INNER JOIN: An INNER JOIN only includes records in which the key is in both tables. With inner joins we look for matches in the right table corresponding to all entries in the key field in the left table. Basic syntax;
+
+		SELECT *
+		FROM left_table
+		INNER JOIN right_table
+		ON left_table.id = right_table.id;
+
+INNER JOIN requires a specification of the key field (or fields) in each table.
+
+Example of INNER JOIN:
+
+Modify the SELECT statement to keep only the name of the city, the name of the country, and the name of the region the country resides in.
+Alias the name of the city AS city and the name of the country AS country (here, there are two tables "cities" and "countries").
+
+		SELECT cities.name AS city, 
+		countries.name AS country, countries.region
+		FROM cities
+		INNER JOIN countries 
+		ON cities.country_code = countries.code;
+
+Still on INNER JOIN, use a USING clause instead of the ON clause when the key field to be joined is the same name in both tables.
+
+SELF JOIN: to compare values in a field to other values of the same field from within the same table.
+
+EXAMPLE SYNTAX: Here, the countries table is the same table and the result is to provide countries that belong to the same continent from the same table.
+
+		SELECT p1.country, p2.country, continent
+		FROM countries AS p1
+		INNER JOIN countries as p2
+		ON p1.continent = p2.continent AND p1.country <> p2.country;
+
+
+CASE WHEN and THEN to group columns into categories. It is a way to do multiple if-then-else statements in a simplified way in SQL. CASE can be used with WHEN, THEN, ELSE, and END to define a new grouping field.
+
+Example:
+
+		SELECT name, continent, indep_year,
+			CASE WHEN indep_year < 1900 THEN 'before 1900'
+				 WHEN indep_year <= 1930 THEN 'between 1900 and 1930'
+				 ELSE 'after 1930' END
+				 AS indep_year_group
+		FROM states
+		ORDER BY indep_year_group;
+
+
+		SELECT name, continent, code, surface_area,
+		CASE WHEN surface_area > 2000000 THEN 'large'
+     	WHEN surface_area > 350000 THEN 'medium'
+     	ELSE 'small' END
+     	AS geosize_group
+     	--create new table with the result
+     	INTO countries_extra
+		FROM countries;
+
+
+self-join to calculate the percentage increase in population from 2010 to 2015 for each country code.
+
+		--select fields with aliases
+		SELECT p1.country_code, p1.size as size2010, p2.size as size2015,
+		        --calculate growth % from 2010 to 2015.
+		        ((p2.size - p1.size)/p1.size * 100.0) AS growth_perc
+		--from populations as p1
+		FROM populations as p1
+		--join to self alias as p2
+		INNER JOIN populations as p2
+		--match on country code
+		ON p1.country_code = p2.country_code 
+		--and year (with calculation)
+		AND p1.year = p2.year - 5;
+
+
+		--------------------------------
+		--select country code and size
+		SELECT country_code, size,
+		--First case, when  size is greater than 5M
+	  	CASE WHEN size > 50000000 THEN 'large'
+	  	--Second case, when size is greater than 350K but less than 5M
+	    WHEN size > 1000000 WHEN 'medium'
+	    --Default case for others
+	    ELSE 'small' END
+	    --alias as popsize_group
+	    AS popsize_group
+	    --create a new table with above result
+		INTO pop_plus       
+		--from the populations table
+		FROM populations
+		--select only data matching year 2015
+		WHERE year = 2015;
+
+		-- Select fields from the created pop_plus table and countries.
+		SELECT c.name, c.continent, c.geosize_group, p.popsize_group
+		-- From countries_plus (alias as c)
+		FROM countries_plus AS c
+		  -- Join to pop_plus (alias as p)
+		INNER JOIN pop_plus as p
+		    -- Match on country code
+		    ON c.code = p.country_code
+		-- Order the table 
+		ORDER BY c.geosize_group;
+
+230
+
+***********OUTER JOIN**************
+
+OUTER JOIN reaches OUT to another table, while keeping all of the records of the orginal table. Types of OUTER JOINs - LEFT JOIN, RIGHT JOIN, FULL JOIN
+
+
+***LEFT JOIN***
+
+LEFT JOIN keeps all of the original records in the left table, but then marks the values as missing in the right table for those that don't have a match.
+
+		SELECT left_table.id, left_table.val, right_table.val
+		FROM left_table
+		LEFT JOIN right_table
+		ON left_table.id = right_table.id;
+
+***RIGHT JOIN***
+
+Does the reverse of LEFT JOIN. Keeps all of the original records of the right table (table reached out to), but marks the values as missing on the left table for those values that don't have a match.
+
+		SELECT right_table.id, left_table.val, right_table.val
+		FROM left_table
+		RIGHT JOIN right_table
+		ON left_table.id = right_table.id;
+
+		SELECT c.region, AVG(e.gdp_percapita) AS avg_gdp
+		FROM countries AS c
+		INNER JOIN economies AS e
+		ON c.code = e.code
+		WHERE e.year = 2010
+		GROUP BY c.region
+		ORDER BY avg_gdp DESC;
+
+		-- convert this code to use RIGHT JOINs instead of LEFT JOINs
+		
+		SELECT cities.name AS city, urbanarea_pop, countries.name AS country,
+		       indep_year, languages.name AS language, percent
+		FROM cities
+		  LEFT JOIN countries
+		    ON cities.country_code = countries.code
+		  LEFT JOIN languages
+		    ON countries.code = languages.code
+		ORDER BY city, language;
+		
+
+		THE RIGHT JOIN:
+
+		SELECT cities.name AS city, urbanarea_pop, countries.name AS country,
+		       indep_year, languages.name AS language, percent
+		FROM languages
+		  RIGHT JOIN countries
+		    ON languages.code = countries.code
+		  RIGHT JOIN cities
+		    ON countries.code = cities.country_code
+		ORDER BY city, language;
+
+**FULL JOIN***
+
+Brings together records in both tables.
+
+		SELECT left_table.id as L_id,
+				right_table.id as R_id,
+				left_table.val as L.val,
+				right_table.val as R.val,
+		FROM left_table,
+		FULL JOIN right_table
+		USING (id);
+
+		SELECT c1.name as country, c1.region, l.name AS language, 
+		        c2.basic_unit, c2.frac_unit
+		FROM countries AS c1
+		FULL JOIN languages AS l
+		USING (code)
+		FULL JOIN currencies AS c2
+		USING (code)
+		WHERE c1.region LIKE 'M%esia';
+
+***CROSS JOIN***
+
+CROSS JOINs create all possible combinations of two tables.
+
+****JOIN SUMMARY****
+
+1. INNER JOIN - Keeps the matching record in both tables.
+2. LEFT JOIN - Keeps all of the record of the left table, plus the matching records in the right table.
+3. RIGHT JOIN - Keeps all of the record of the right table, plus the matching records in the left table.
+4. FULL JOIN - Brings all the record of the left and right table together. Basically a LEFT JOIN + RIGHT JOIN.
+5. SELF JOIN - compare values of the same field type within the same table.
+6. CROSS JOIN - All possible combination of two tables.
+
+
+MORE EXAMPLES:
+
+In terms of life expectancy for 2010, determine the names of the lowest five countries and their regions:
+		
+		SELECT c.name AS country, c.region, p.life_expectancy AS life_exp
+		FROM countries AS c
+		LEFT JOIN populations AS p
+		ON c.code = p.country_code
+		WHERE p.year = 2010
+		ORDER BY life_exp
+		LIMIT 5;
+
+
+********************SET THEORY CLAUSES - UNIONS*********************
+
+UNIONS stack records on top of each other from one table to the next.
+
+1. UNION - includes all record in both tables but does not repeat those that are in both tables, i.e. if the same record is present in both tables, it is recorded once.
+2. UNION ALL - includes every record in both tables and repeats those records in both tables.
+3. INTERSECT - all records found in both of the tables only.
+4. EXCEPT - all records in one table that can't be found in the other.
+
+
+		SELECT *
+		FROM economies2010
+		UNION
+		SELECT * 
+		FROM economies2015
+		ORDER BY code, year
+
+Determine all (non-duplicated) country codes in either the cities or the currencies table. The result should be a table with only one field called country_code.
+
+		SELECT c1.country_code
+		FROM cities AS c1
+		UNION 
+		SELECT c2.code as country_code
+		FROM currencies as c2
+		ORDER BY country_code;
+
+
+***************SEMI-JOINS AND ANTI-JOINS (Sub-queries)****************
+
+Subqueries are mostly found within WHERE SQL clauses.
+SEMI & ANTI JOINS use a right table to determine which records to keep in the left table. Used in a way similar to a WHERE clause dependent on the values of a second table. Used to filter one table's records on the records of another table.
+
+SEMI-JOIN  - chooses records in the first table where a condition IS met in a second table. SEMI-JOINS matches records by key field in the right table with those in the left, then picks out only the rows in the left table that match that condition. Query below will return the president, country & continent (left table) of countries that gained independence before 1800 (right table). 
+
+		SELECT president, country, continent
+		FROM presidents
+		WHERE country IN 
+				(SELECT name
+				FROM states
+				WHERE indep_year < 1800);
+
+ANTI-JOIN - chooses records in the first table where a condition IS NOT met in the second table. ANTI-JOINS picks out those columns in the left table that do not match the condition on the right table. Query below will return the countries in the America continent founded after 1800. 
+
+		SELECT president, country, continent
+		FROM presidents
+		WHERE continent LIKE '%America'
+			AND country NOT IN 
+			(SELECT name FROM states
+			WHERE indep_year < 1800);
+
+ANTI-JOIN could be useful in identifying which records are causing an incorrect number of records to appear in join queries.
+
+Example of SEMI-JOIN and INNER JOIN to get same result.
+
+Using SEMI-JOIN:
+		SELECT DISTINCT name
+		FROM languages
+		WHERE code IN
+		  (SELECT code
+		   FROM countries
+		   WHERE region = 'Middle East')
+		   --could also be written as WHERE region LIKE '%East'
+		ORDER BY name;
+Using INNER JOIN:
+
+		SELECT DISTINCT languages.name AS language
+		FROM languages
+		INNER JOIN countries
+		ON languages.code = countries.code
+		WHERE region = 'Middle East'
+		--WHERE region LIKE '%East'
+		ORDER BY language;
+
+
+An example on subqueries:
+
+The query below will:
+
+1. Identify the country codes that are included in either economies or currencies but not in populations.
+2. Use the result to determine the names of cities in the countries that match the specification in the previous instruction.
+
+		SELECT c1.name
+		FROM cities AS c1
+		WHERE country_code IN
+		--identify the country codes included in either economies or currencies.
+		  (SELECT e.code 
+		  FROM economies AS e
+		  UNION
+		  SELECT c2.code
+		  FROM currencies AS c2
+		  --country codes included in either economies or currencies but not in population
+		  EXCEPT
+		  SELECT p.country_code
+		  FROM populations as p);
+
+******MORE EXAMPLES ON SUBQUERIES*******
+
+Embeding queries inside a query.
+
+1. Subqueries inside a WHERE clause. Query below returns the Asian countries where the average fertility rate is below  per woman.
+	
+
+		SELECT name, fert_rate
+		FROM states
+		WHERE continent = 'Asia'
+			AND fert_rate < 
+				(SELECT AVG(fert_rate) FROM states);
+
+More example:
+
+Get the urban area population for only capital cities.
+
+		SELECT name, country_code, urbanarea_pop
+		FROM cities
+		WHERE name IN (
+		  SELECT capital FROM countries
+		)
+		ORDER BY urbanarea_pop DESC;
+
+2. Subqueries inside a SELECT clause. Query below counts the no of countries in the states table for each of the continents. Subqueries inside a SELECT statement requires an alias for the subquery.
+
+		SELECT DISTINCT continent,
+			(SELECT COUNT(*)
+			FROM states
+			WHERE prime_ministers.continent = states.continent) AS countries_num
+		FROM prime_ministers;
+
+3. Subqueries inside the FROM clause. Query below returns the max % of women in parliament for each of the continent in the monarchs table.
+
+
+		SELECT DISTINCT monarchs.continent, subquery.max_perc
+		FROM monarchs,
+			(SELECT continent, MAX(women_parli_perc) AS max_perc
+			FROM states GROUP BY continent) AS subquery
+		WHERE monarchs.continent = subquery.continent
+		ORDER BY continent;
+
+
+
+More example on advanced queries:
+
+1. Subquery to get 2015 economic data for countries that do not have gov_form of 'Constitutional Monarchy' or 'Republic' in their gov_form.
+
+		SELECT code, inflation_rate, unemployment_rate
+		FROM economies
+		WHERE year = 2015 AND code NOT IN (
+		  SELECT code
+		  FROM countries
+		  WHERE (gov_form = 'Constitutional Monarchy' OR gov_form LIKE '%Republic')
+		)
+		ORDER BY inflation_rate;
+
+2. Determine the top 10 capital cities in Europe and the Americas in terms of a calculated percentage using city_proper_pop and metroarea_pop in cities.
+	
+	--select city name, country code, city proper population, metro area population
+		SELECT c.name, c.country_code, c.city_proper_pop, c.metroarea_pop,
+	--calculate the % of metro area population composed of city proper population for each city
+      (c.city_proper_pop / c.metroarea_pop) * 100.0 AS city_perc
+      --from cities table
+		FROM cities AS c
+		--focus only on capital cities in Europe and Americas in subquery below
+		WHERE c.name IN (
+		  SELECT capital
+		  FROM countries
+		  WHERE (continent = 'Europe' OR continent LIKE '%America'))
+		 --exclude records with missing data on metro population
+		  AND c.metroarea_pop IS NOT NULL
+		  --order by city_perc in desceding order
+		ORDER BY city_perc DESC
+		--Limit to the top 10 capital cities in terms of city_perc
+		LIMIT 10;
